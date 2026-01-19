@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from scipy.stats import beta
-import plotly.express as px
+import plotly.express as px  # only for the α, β chart
 
 # --------------------
 # CONFIG
@@ -21,16 +21,20 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTenqgW-kUxb15j20c86F
 @st.cache_data
 def load_data(csv_url: str) -> pd.DataFrame:
     df = pd.read_csv(csv_url)
+    # Normalize column names
     df.columns = [c.strip().lower() for c in df.columns]
 
+    # Map expected names
     if 'customer' not in df.columns and 'acctrefno' in df.columns:
         df.rename(columns={'acctrefno': 'customer'}, inplace=True)
     if 'hour' not in df.columns and 'callhr' in df.columns:
         df.rename(columns={'callhr': 'hour'}, inplace=True)
 
+    # Keep only required columns if they exist
     keep_cols = [c for c in ['customer', 'hour', 'success', 'failure'] if c in df.columns]
     df = df[keep_cols].copy()
 
+    # Ensure types
     df['customer'] = df['customer'].astype(str)
     df['hour'] = pd.to_numeric(df['hour'], errors='coerce')
     df['success'] = pd.to_numeric(df['success'], errors='coerce').fillna(0).astype(int)
@@ -44,7 +48,7 @@ def load_data(csv_url: str) -> pd.DataFrame:
 df = load_data(CSV_URL)
 
 # --------------------
-# TITLE / HEADER
+# TITLE / HEADER (original style)
 # --------------------
 st.markdown(
     "<h1 style='margin-bottom:0.2rem;color:#111827;'>Thompson Sampling Call Optimizer</h1>",
@@ -58,11 +62,11 @@ st.caption(
     f"Analyzing {df['customer'].nunique()} customers • {len(df)} call patterns"
 )
 
+# --------------------
+# CUSTOMER SELECTION (original)
+# --------------------
 st.markdown("---")
 
-# --------------------
-# CUSTOMER SELECTION
-# --------------------
 customers = sorted(df['customer'].unique())
 default_customer = customers[0] if customers else None
 
@@ -78,7 +82,7 @@ with col_sel:
 cust_df = df[df['customer'] == selected_customer].copy()
 
 # --------------------
-# THOMPSON SAMPLING LOGIC
+# THOMPSON SAMPLING LOGIC (original)
 # --------------------
 def thompson_sampling_for_customer(cdf: pd.DataFrame) -> pd.DataFrame:
     if cdf.empty:
@@ -94,6 +98,7 @@ def thompson_sampling_for_customer(cdf: pd.DataFrame) -> pd.DataFrame:
     cdf['alpha'] = cdf['success'] + 1
     cdf['beta'] = cdf['failure'] + 1
 
+    # Sample from Beta(alpha, beta)
     cdf['probability'] = beta.rvs(cdf['alpha'], cdf['beta'])
 
     cdf['total_attempts'] = cdf['success'] + cdf['failure']
@@ -115,7 +120,7 @@ best_hour_display = f"{int(best_row['hour'])}:00" if best_row is not None else "
 best_conf_display = f"{best_row['probability']*100:.1f}%" if best_row is not None else "0.0%"
 
 # --------------------
-# KPI CARDS (light colors)
+# KPI CARDS (keep light version)
 # --------------------
 st.markdown("---")
 
@@ -196,32 +201,22 @@ if total_calls < 5:
     )
 
 # --------------------
-# CHARTS ROW
+# CHARTS ROW (restore original: st.bar_chart for probabilities)
 # --------------------
 st.markdown("---")
 col1, col2 = st.columns(2)
 
+# Probability distribution chart (original style)
 with col1:
     st.subheader("Thompson Sampling Probabilities")
     if not rec_df.empty:
         prob_df = rec_df[['hour', 'probability']].copy()
-        fig_prob = px.bar(
-            prob_df,
-            x='hour',
-            y='probability',
-            labels={'probability': 'Pickup Probability', 'hour': 'Hour'},
-            color_discrete_sequence=['#3b82f6']
-        )
-        fig_prob.update_layout(
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            yaxis=dict(gridcolor='#e5e7eb'),
-            xaxis=dict(gridcolor='#e5e7eb')
-        )
-        st.plotly_chart(fig_prob, use_container_width=True)
+        prob_df.set_index('hour', inplace=True)
+        st.bar_chart(prob_df, use_container_width=True)
     else:
         st.info("No data available for this customer.")
 
+# Learning data (α, β) using Plotly with top legend as before
 with col2:
     st.subheader("Learning Data (α, β Parameters)")
     if not rec_df.empty:
@@ -233,18 +228,10 @@ with col2:
             y=['success', 'failure'],
             barmode='group',
             labels={'value': 'Count', 'hour': 'Hour', 'variable': 'Metric'},
-            title="Learning Data (α, β Parameters)",
-            color_discrete_map={
-                'success': '#22c55e',
-                'failure': '#ef4444'
-            }
+            title="Learning Data (α, β Parameters)"
         )
 
         fig.update_layout(
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            yaxis=dict(gridcolor='#e5e7eb'),
-            xaxis=dict(gridcolor='#e5e7eb'),
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
@@ -259,7 +246,7 @@ with col2:
         st.info("No data available for this customer.")
 
 # --------------------
-# RANKED RECOMMENDATIONS TABLE
+# RANKED RECOMMENDATIONS TABLE (original)
 # --------------------
 st.subheader(f"Ranked Recommendations for Customer {selected_customer}")
 
@@ -282,7 +269,7 @@ else:
     st.info("No recommendations available (no data).")
 
 # --------------------
-# ALL CUSTOMERS SUMMARY
+# ALL CUSTOMERS SUMMARY (original)
 # --------------------
 st.subheader("All Customers Summary")
 
@@ -325,7 +312,7 @@ else:
     st.info("No customer summary available (no data).")
 
 # --------------------
-# METHODOLOGY
+# METHODOLOGY (original)
 # --------------------
 st.markdown("### Thompson Sampling Methodology")
 
