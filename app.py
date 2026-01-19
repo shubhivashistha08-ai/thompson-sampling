@@ -21,20 +21,16 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTenqgW-kUxb15j20c86F
 @st.cache_data
 def load_data(csv_url: str) -> pd.DataFrame:
     df = pd.read_csv(csv_url)
-    # Normalize column names
     df.columns = [c.strip().lower() for c in df.columns]
 
-    # Map expected names
     if 'customer' not in df.columns and 'acctrefno' in df.columns:
         df.rename(columns={'acctrefno': 'customer'}, inplace=True)
     if 'hour' not in df.columns and 'callhr' in df.columns:
         df.rename(columns={'callhr': 'hour'}, inplace=True)
 
-    # Keep only required columns if they exist
     keep_cols = [c for c in ['customer', 'hour', 'success', 'failure'] if c in df.columns]
     df = df[keep_cols].copy()
 
-    # Ensure types
     df['customer'] = df['customer'].astype(str)
     df['hour'] = pd.to_numeric(df['hour'], errors='coerce')
     df['success'] = pd.to_numeric(df['success'], errors='coerce').fillna(0).astype(int)
@@ -51,22 +47,22 @@ df = load_data(CSV_URL)
 # TITLE / HEADER
 # --------------------
 st.markdown(
-    "<h1 style='margin-bottom:0.2rem;'>Thompson Sampling Call Optimizer</h1>",
+    "<h1 style='margin-bottom:0.2rem;color:#111827;'>Thompson Sampling Call Optimizer</h1>",
     unsafe_allow_html=True
 )
 st.markdown(
-    "<p style='color:#4b5563;margin-top:0;'>Real-time AI-Powered Call Timing Engine</p>",
+    "<p style='color:#6b7280;margin-top:0;'>Real-time AI-Powered Call Timing Engine</p>",
     unsafe_allow_html=True
 )
 st.caption(
     f"Analyzing {df['customer'].nunique()} customers • {len(df)} call patterns"
 )
 
-# --------------------
-# CUSTOMER SELECTION CARD
-# --------------------
 st.markdown("---")
 
+# --------------------
+# CUSTOMER SELECTION
+# --------------------
 customers = sorted(df['customer'].unique())
 default_customer = customers[0] if customers else None
 
@@ -98,7 +94,6 @@ def thompson_sampling_for_customer(cdf: pd.DataFrame) -> pd.DataFrame:
     cdf['alpha'] = cdf['success'] + 1
     cdf['beta'] = cdf['failure'] + 1
 
-    # Sample from Beta(alpha, beta)
     cdf['probability'] = beta.rvs(cdf['alpha'], cdf['beta'])
 
     cdf['total_attempts'] = cdf['success'] + cdf['failure']
@@ -120,7 +115,7 @@ best_hour_display = f"{int(best_row['hour'])}:00" if best_row is not None else "
 best_conf_display = f"{best_row['probability']*100:.1f}%" if best_row is not None else "0.0%"
 
 # --------------------
-# KPI CARDS (TOP CARDS)
+# KPI CARDS (light colors)
 # --------------------
 st.markdown("---")
 
@@ -128,73 +123,69 @@ k1, k2, k3, k4 = st.columns(4)
 
 with k1:
     st.markdown(
-        """
+        f"""
         <div style="
-            background: linear-gradient(to bottom right, #22c55e, #16a34a);
-            border-radius: 0.75rem;
-            padding: 1.25rem;
-            color: white;
-            box-shadow: 0 10px 15px -3px rgba(22,163,74,0.3);
+            background-color:#f0fdf4;
+            border-radius:0.75rem;
+            padding:1.1rem;
+            border:1px solid #bbf7d0;
         ">
-            <p style="font-size:0.8rem; color:#bbf7d0; margin:0;">Best Time to Call</p>
-            <p style="font-size:2rem; font-weight:700; margin:0.25rem 0 0;">{hour}</p>
-            <p style="font-size:0.7rem; color:#bbf7d0; margin:0.25rem 0 0;">Hour of day</p>
+            <p style="font-size:0.8rem;color:#15803d;margin:0;">Best Time to Call</p>
+            <p style="font-size:1.8rem;font-weight:700;margin:0.25rem 0 0;color:#14532d;">{best_hour_display}</p>
+            <p style="font-size:0.75rem;color:#15803d;margin:0.25rem 0 0;">Hour of day</p>
         </div>
-        """.format(hour=best_hour_display),
+        """,
         unsafe_allow_html=True
     )
 
 with k2:
     st.markdown(
-        """
+        f"""
         <div style="
-            background: linear-gradient(to bottom right, #3b82f6, #4f46e5);
-            border-radius: 0.75rem;
-            padding: 1.25rem;
-            color: white;
-            box-shadow: 0 10px 15px -3px rgba(59,130,246,0.3);
+            background-color:#eff6ff;
+            border-radius:0.75rem;
+            padding:1.1rem;
+            border:1px solid #bfdbfe;
         ">
-            <p style="font-size:0.8rem; color:#bfdbfe; margin:0;">Confidence</p>
-            <p style="font-size:2rem; font-weight:700; margin:0.25rem 0 0;">{conf}</p>
-            <p style="font-size:0.7rem; color:#bfdbfe; margin:0.25rem 0 0;">Thompson sampling</p>
+            <p style="font-size:0.8rem;color:#1d4ed8;margin:0;">Confidence</p>
+            <p style="font-size:1.8rem;font-weight:700;margin:0.25rem 0 0;color:#1d4ed8;">{best_conf_display}</p>
+            <p style="font-size:0.75rem;color:#1d4ed8;margin:0.25rem 0 0;">Thompson sampling</p>
         </div>
-        """.format(conf=best_conf_display),
+        """,
         unsafe_allow_html=True
     )
 
 with k3:
     st.markdown(
-        """
+        f"""
         <div style="
-            background: linear-gradient(to bottom right, #a855f7, #7c3aed);
-            border-radius: 0.75rem;
-            padding: 1.25rem;
-            color: white;
-            box-shadow: 0 10px 15px -3px rgba(124,58,237,0.3);
+            background-color:#faf5ff;
+            border-radius:0.75rem;
+            padding:1.1rem;
+            border:1px solid #e9d5ff;
         ">
-            <p style="font-size:0.8rem; color:#e9d5ff; margin:0;">Total Attempts</p>
-            <p style="font-size:2rem; font-weight:700; margin:0.25rem 0 0;">{calls}</p>
-            <p style="font-size:0.7rem; color:#e9d5ff; margin:0.25rem 0 0;">Historical calls</p>
+            <p style="font-size:0.8rem;color:#7e22ce;margin:0;">Total Attempts</p>
+            <p style="font-size:1.8rem;font-weight:700;margin:0.25rem 0 0;color:#6b21a8;">{total_calls}</p>
+            <p style="font-size:0.75rem;color:#7e22ce;margin:0.25rem 0 0;">Historical calls</p>
         </div>
-        """.format(calls=total_calls),
+        """,
         unsafe_allow_html=True
     )
 
 with k4:
     st.markdown(
-        """
+        f"""
         <div style="
-            background: linear-gradient(to bottom right, #f97316, #ea580c);
-            border-radius: 0.75rem;
-            padding: 1.25rem;
-            color: white;
-            box-shadow: 0 10px 15px -3px rgba(234,88,12,0.3);
+            background-color:#fff7ed;
+            border-radius:0.75rem;
+            padding:1.1rem;
+            border:1px solid #fed7aa;
         ">
-            <p style="font-size:0.8rem; color:#fed7aa; margin:0;">Success Rate</p>
-            <p style="font-size:2rem; font-weight:700; margin:0.25rem 0 0;">{rate}</p>
-            <p style="font-size:0.7rem; color:#fed7aa; margin:0.25rem 0 0;">Historical pickup</p>
+            <p style="font-size:0.8rem;color:#c2410c;margin:0;">Success Rate</p>
+            <p style="font-size:1.8rem;font-weight:700;margin:0.25rem 0 0;color:#9a3412;">{overall_rate:.1f}%</p>
+            <p style="font-size:0.75rem;color:#c2410c;margin:0.25rem 0 0;">Historical pickup</p>
         </div>
-        """.format(rate=f"{overall_rate:.1f}%"),
+        """,
         unsafe_allow_html=True
     )
 
@@ -210,17 +201,27 @@ if total_calls < 5:
 st.markdown("---")
 col1, col2 = st.columns(2)
 
-# Probability distribution chart
 with col1:
     st.subheader("Thompson Sampling Probabilities")
     if not rec_df.empty:
         prob_df = rec_df[['hour', 'probability']].copy()
-        prob_df.set_index('hour', inplace=True)
-        st.bar_chart(prob_df, use_container_width=True)
+        fig_prob = px.bar(
+            prob_df,
+            x='hour',
+            y='probability',
+            labels={'probability': 'Pickup Probability', 'hour': 'Hour'},
+            color_discrete_sequence=['#3b82f6']
+        )
+        fig_prob.update_layout(
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            yaxis=dict(gridcolor='#e5e7eb'),
+            xaxis=dict(gridcolor='#e5e7eb')
+        )
+        st.plotly_chart(fig_prob, use_container_width=True)
     else:
         st.info("No data available for this customer.")
 
-# Learning data (α, β) chart with legend on top
 with col2:
     st.subheader("Learning Data (α, β Parameters)")
     if not rec_df.empty:
@@ -232,10 +233,18 @@ with col2:
             y=['success', 'failure'],
             barmode='group',
             labels={'value': 'Count', 'hour': 'Hour', 'variable': 'Metric'},
-            title="Learning Data (α, β Parameters)"
+            title="Learning Data (α, β Parameters)",
+            color_discrete_map={
+                'success': '#22c55e',
+                'failure': '#ef4444'
+            }
         )
 
         fig.update_layout(
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            yaxis=dict(gridcolor='#e5e7eb'),
+            xaxis=dict(gridcolor='#e5e7eb'),
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
